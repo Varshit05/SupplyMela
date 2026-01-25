@@ -19,7 +19,9 @@ const app = express();
 app.use(cors({
 origin: [
 "http://localhost:5173",
-"https://supply-mela.vercel.app"
+"https://supply-mela.vercel.app",
+"https://supplymela.com",
+"https://www.supplymela.com"
 ],
 methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 allowedHeaders: ["Content-Type", "Authorization"],
