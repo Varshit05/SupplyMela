@@ -28,7 +28,7 @@ const Navbar = () => {
           <img
             src={logoImg}
             alt="SupplyMela Home"
-            className=" h-10 md:h-12 w-36 md:w-36 object-cover object-center transition-transform group-hover:scale-105"
+            className="h-10 md:h-12 w-32 md:w-36 object-cover object-center transition-transform group-hover:scale-105 "
           />
 
 
