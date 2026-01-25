@@ -1,6 +1,6 @@
 // layouts/VendorLayout.jsx
 import { useState, useEffect, useRef } from "react";
-import Navbar from "../components/Navbar";
+import Navbar from "../components/NavBar";
 import { Outlet, Link } from "react-router-dom";
 
 const VendorLayout = () => {
