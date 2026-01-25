@@ -17,7 +17,10 @@ connectDB();
 const app = express();
 
 app.use(cors({
-origin: "https://your-project.vercel.app",
+origin: [
+"http://localhost:5173",
+"https://supply-mela.vercel.app/"
+],
 credentials: true
 }));
 app.use(express.json());
