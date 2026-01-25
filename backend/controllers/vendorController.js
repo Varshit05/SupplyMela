@@ -1,7 +1,6 @@
 import Vendor from "../models/Vendor.js";
 import calculateTrustScore from "../utils/trustScore.js";
-import { v2 as cloudinary } from "cloudinary";
-import fs from "fs-extra";
+import { uploadBufferToCloudinary } from "../utils/cloudinaryUpload.js";
 
 /* ================= PROFILE ================= */
 
@@ -11,7 +10,7 @@ export const getProfile = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-const vendor = await Vendor.findById(req.user.id).select("-password");
+    const vendor = await Vendor.findById(req.user.id).select("-password");
 
     if (!vendor) {
       return res.status(404).json({ message: "Vendor not found" });
@@ -28,7 +27,7 @@ const vendor = await Vendor.findById(req.user.id).select("-password");
 export const updateProfile = async (req, res) => {
   try {
     // ✅ Correct vendor lookup
-const vendor = await Vendor.findById(req.user.id);
+    const vendor = await Vendor.findById(req.user.id);
 
     if (!vendor) {
       return res.status(404).json({ message: "Vendor not found" });
@@ -78,29 +77,30 @@ const vendor = await Vendor.findById(req.user.id);
     if (req.body.ifsc !== undefined)
       vendor.bankDetails.ifsc = req.body.ifsc;
 
-  /* ---------- FILES ---------- */
-if (req.files && req.files.length > 0) {
-  for (const file of req.files) {
-    const result = await cloudinary.uploader.upload(file.path, {
-      folder: "vendor_documents",
-      resource_type: "raw",
-    });
+    /* ---------- FILES ---------- */
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await uploadBufferToCloudinary(
+          file.buffer,
+          "vendor_documents"
+        );
 
-    await fs.remove(file.path);
 
-    if (file.fieldname === "panFile") {
-      vendor.documents.panCard = result.secure_url;
+        if (file.fieldname === "panFile") {
+          vendor.documents.panCard = result.secure_url;
+        }
+
+
+        if (file.fieldname === "gstFile") {
+          vendor.documents.gstCert = result.secure_url;
+        }
+
+
+        if (file.fieldname === "licenseFile") {
+          vendor.documents.license = result.secure_url;
+        }
+      }
     }
-
-    if (file.fieldname === "gstFile") {
-      vendor.documents.gstCert = result.secure_url;
-    }
-
-    if (file.fieldname === "licenseFile") {
-      vendor.documents.license = result.secure_url;
-    }
-  }
-}
 
 
     /* ---------- TRUST SCORE ---------- */
@@ -142,27 +142,28 @@ export const uploadVendorDocument = async (req, res) => {
   try {
     const { type } = req.body;
 
+
     if (!req.file) {
       return res.status(400).json({ message: "No file received" });
     }
 
-    // ✅ Correct vendor lookup
-const vendor = await Vendor.findById(req.user.id);
 
+    const vendor = await Vendor.findById(req.user.id);
     if (!vendor) {
       return res.status(404).json({ message: "Vendor not found" });
     }
+
 
     if (!vendor.documents) vendor.documents = {};
     if (!vendor.documents.certifications)
       vendor.documents.certifications = [];
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "vendor_documents",
-      resource_type: "raw",
-    });
 
-    await fs.remove(req.file.path);
+    const result = await uploadBufferToCloudinary(
+      req.file.buffer,
+      "vendor_documents"
+    );
+
 
     if (type === "certification") {
       vendor.documents.certifications.push(result.secure_url);
@@ -170,17 +171,19 @@ const vendor = await Vendor.findById(req.user.id);
       vendor.documents[type] = result.secure_url;
     }
 
+
     vendor.trustScore = calculateTrustScore(vendor);
     vendor.kycStatus = "pending";
 
+
     await vendor.save();
+
 
     res.status(200).json({
       message: "Document uploaded successfully",
       documentUrl: result.secure_url,
       trustScore: vendor.trustScore,
     });
-
   } catch (error) {
     console.error("UPLOAD ERROR:", error);
     res.status(500).json({

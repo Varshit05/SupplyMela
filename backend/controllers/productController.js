@@ -1,6 +1,5 @@
 import Product from "../models/product.js";
-import { cloudinary } from "../config/cloudinary.js";
-import fs from "fs-extra";
+import { uploadBufferToCloudinary } from "../utils/cloudinaryUpload.js";
 
 /* CREATE PRODUCT */
 export const createProduct = async (req, res) => {
@@ -8,30 +7,28 @@ export const createProduct = async (req, res) => {
     const images = [];
     let catalogue = "";
 
-    // 🔹 Upload images to Cloudinary
+
+    // 🔹 Upload images
     if (req.files?.images) {
       for (const file of req.files.images) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "products/images",
-        });
+        const result = await uploadBufferToCloudinary(
+          file.buffer,
+          "products/images"
+        );
         images.push(result.secure_url);
-        await fs.remove(file.path); // delete local file
       }
     }
 
+
     // 🔹 Upload catalogue (PDF)
     if (req.files?.catalogue) {
-      const result = await cloudinary.uploader.upload(
-        req.files.catalogue[0].path,
-        {
-          folder: "products/catalogues",
-          resource_type: "auto",
-          flags: "attachment:false",
-        }
+      const result = await uploadBufferToCloudinary(
+        req.files.catalogue[0].buffer,
+        "products/catalogues"
       );
       catalogue = result.secure_url;
-      await fs.remove(req.files.catalogue[0].path);
     }
+
 
     const product = await Product.create({
       vendor: req.user.id,
@@ -40,6 +37,7 @@ export const createProduct = async (req, res) => {
       catalogue,
     });
 
+
     res.status(201).json(product);
   } catch (err) {
     console.error("PRODUCT CREATE ERROR:", err);
@@ -47,40 +45,42 @@ export const createProduct = async (req, res) => {
   }
 };
 
-/* UPDATE PRODUCT */
+
+/* =========================
+UPDATE PRODUCT
+========================= */
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product)
       return res.status(404).json({ message: "Product not found" });
 
+
     Object.assign(product, req.body);
 
-    // 🔹 Replace images if new ones uploaded
+
+    // 🔹 Replace images if uploaded
     if (req.files?.images) {
       product.images = [];
       for (const file of req.files.images) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "products/images",
-        });
+        const result = await uploadBufferToCloudinary(
+          file.buffer,
+          "products/images"
+        );
         product.images.push(result.secure_url);
-        await fs.remove(file.path);
       }
     }
 
+
     // 🔹 Replace catalogue if uploaded
     if (req.files?.catalogue) {
-      const result = await cloudinary.uploader.upload(
-        req.files.catalogue[0].path,
-        {
-          folder: "products/catalogues",
-          resource_type: "auto",
-          flags: "attachment:false",
-        }
+      const result = await uploadBufferToCloudinary(
+        req.files.catalogue[0].buffer,
+        "products/catalogues"
       );
       product.catalogue = result.secure_url;
-      await fs.remove(req.files.catalogue[0].path);
     }
+
 
     await product.save();
     res.json(product);

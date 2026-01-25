@@ -43,7 +43,7 @@ const Register = () => {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Create Password</label>
-            <input className="input" type="password" placeholder="At least 8 characters"
+            <input className="input" type="password" placeholder="At least 6 characters"
               onChange={e => setForm({...form, password:e.target.value})} required />
           </div>
 
