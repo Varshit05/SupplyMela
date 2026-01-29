@@ -156,10 +156,8 @@ const Profile = () => {
                     onChange={e => setForm({ ...form, panNumber: e.target.value.toUpperCase() })} required />
                   <Input label="GST Number" value={form.gstNumber || ""} 
                     onChange={e => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })} required />
-                  <div className="md:col-span-2">
                     <Input label="CIN (Optional)" value={form.cin || ""} 
                       onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })} />
-                  </div>
                 </div>
               </section>
 
