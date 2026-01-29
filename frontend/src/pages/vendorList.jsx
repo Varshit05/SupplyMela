@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import api from "../api/vendorAxios";
-import { FiArrowRight, FiUsers, FiStar } from "react-icons/fi";
+import { FiArrowRight, FiUsers, FiStar, FiCheckCircle } from "react-icons/fi";
 
 const VendorList = () => {
   const [vendors, setVendors] = useState([]);
 
   useEffect(() => {
     api.get("/vendors").then((res) => {
-      const sortedData = [...res.data].sort(
-        (a, b) => (b.trust?.rating || 0) - (a.trust?.rating || 0)
-      );
-      setVendors(sortedData);
+      const filteredAndSorted = res.data
+      .filter((v) => v.kycStatus === "approved")
+      .sort((a, b) => (b.trust?.rating || 0) - (a.trust?.rating || 0));
+      setVendors(filteredAndSorted);
     });
   }, []);
 

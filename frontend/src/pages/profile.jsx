@@ -3,44 +3,76 @@ import api from "../api/vendorAxios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Input, Textarea, Upload } from "../components/FormElements";
-import { FiUser, FiFileText, FiCreditCard, FiArrowLeft, FiArrowRight, FiCheck } from "react-icons/fi";
+import { 
+  FiUser, 
+  FiFileText, 
+  FiCreditCard, 
+  FiArrowLeft, 
+  FiArrowRight, 
+  FiCheck,
+  FiLoader 
+} from "react-icons/fi";
 
 const Profile = () => {
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
 
+  // Fetch existing data on mount
   useEffect(() => {
-    api.get("/vendors/profile").then(res => {
-      setForm(res.data || {});
-      setLoading(false);
-    });
+    api.get("/vendors/profile")
+      .then(res => {
+        setForm(res.data || {});
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+        toast.error("Failed to load profile data");
+      });
   }, []);
-
-  const next = () => setStep(s => s + 1);
-  const prev = () => setStep(s => s - 1);
 
   const handleFile = (e, key) => {
     setForm({ ...form, [key]: e.target.files[0] });
   };
 
-  const submit = async () => {
+  const prev = () => setStep(s => s - 1);
+
+  // Unified Save & Continue Logic
+  const handleSave = async (isFinal = false) => {
+    setIsSaving(true);
+    
     const fd = new FormData();
-    Object.entries(form).forEach(([key, value]) => fd.append(key, value));
+    // Append all current form fields to FormData
+    Object.entries(form).forEach(([key, value]) => {
+      // Only append if value exists to avoid sending "undefined" strings
+      if (value !== null && value !== undefined) {
+        fd.append(key, value);
+      }
+    });
+
     try {
       await api.put("/vendors/profile", fd);
-      toast.success("Profile updated successfully");
-      navigate("/dashboard");
+      toast.success(isFinal ? "Profile updated!" : "Progress saved");
+      
+      if (isFinal) {
+        navigate("/dashboard");
+      } else {
+        setStep(s => s + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (err) {
-      toast.error("Update failed. Please check your details.");
+      toast.error(err.response?.data?.message || "Update failed. Please check your details.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (loading) return <ProfileSkeleton />;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Header */}
       <div className="text-center md:text-left">
         <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Complete Your Profile</h2>
@@ -55,13 +87,13 @@ const Profile = () => {
           { s: 2, label: "Compliance", icon: <FiFileText /> },
           { s: 3, label: "Banking", icon: <FiCreditCard /> }
         ].map((item) => (
-          <div key={item.s} className="flex flex-col items-center gap-2">
+          <div key={item.s} className="flex flex-col items-center gap-2 bg-slate-50 md:bg-transparent px-2">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
               step >= item.s ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-400"
             }`}>
               {step > item.s ? <FiCheck strokeWidth={3} /> : item.icon}
             </div>
-            <span className={`text-xs font-bold uppercase tracking-wider ${step >= item.s ? "text-indigo-600" : "text-slate-400"}`}>
+            <span className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${step >= item.s ? "text-indigo-600" : "text-slate-400"}`}>
               {item.label}
             </span>
           </div>
@@ -69,9 +101,10 @@ const Profile = () => {
       </div>
 
       {/* Form Card */}
-      <div className="card shadow-xl border-none p-8 md:p-10 bg-white rounded-3xl">
-        <form className="space-y-6">
-          {/* STAGE 1: Business Info */}
+      <div className="card shadow-xl border-none p-6 md:p-10 bg-white rounded-3xl">
+        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
+          
+          {/* STEP 1: Business Info */}
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
@@ -82,7 +115,7 @@ const Profile = () => {
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Entity Type</label>
                 <select
-                  className="input cursor-pointer w-full p-3 rounded-xl border border-slate-200"
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={form.entityType || ""}
                   onChange={e => setForm({ ...form, entityType: e.target.value })}
                   required
@@ -110,50 +143,93 @@ const Profile = () => {
             </div>
           )}
 
-          {/* STAGE 2: Compliance */}
+          {/* STEP 2: Compliance (Improved Layout) */}
           {step === 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input label="PAN Number" value={form.panNumber || ""} 
-                onChange={e => setForm({ ...form, panNumber: e.target.value })} required />
-              
-              <Input label="CIN (Optional)" value={form.cin || ""} 
-                onChange={e => setForm({ ...form, cin: e.target.value })} />
+            <div className="space-y-8">
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
+                  <h3 className="text-lg font-bold text-slate-800">Identity Details</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input label="PAN Number" value={form.panNumber || ""} 
+                    onChange={e => setForm({ ...form, panNumber: e.target.value.toUpperCase() })} required />
+                  <Input label="GST Number" value={form.gstNumber || ""} 
+                    onChange={e => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })} required />
+                  <div className="md:col-span-2">
+                    <Input label="CIN (Optional)" value={form.cin || ""} 
+                      onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })} />
+                  </div>
+                </div>
+              </section>
 
-              <Upload label="PAN Card Document" onChange={e => handleFile(e, "panFile")} required />
-              <Upload label="GST Certificate(s)" onChange={e => handleFile(e, "gstFile")} required />
+              <hr className="border-slate-100" />
+
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
+                  <h3 className="text-lg font-bold text-slate-800">Supporting Documents</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                  <Upload label="PAN Card Document" onChange={e => handleFile(e, "panFile")} required />
+                  <Upload label="GST Certificate(s)" onChange={e => handleFile(e, "gstFile")} required />
+                </div>
+              </section>
             </div>
           )}
 
-          {/* STAGE 3: Banking */}
+          {/* STEP 3: Banking */}
           {step === 3 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input label="Bank Account Number" value={form.bankAccount || ""} 
-                onChange={e => setForm({ ...form, bankAccount: e.target.value })} />
-              <Input label="IFSC Code" value={form.ifsc || ""} 
-                onChange={e => setForm({ ...form, ifsc: e.target.value })} />
+            <div className="space-y-6">
+               <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
+                  <h3 className="text-lg font-bold text-slate-800">Banking Information</h3>
+                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input label="Bank Account Number" value={form.bankAccount || ""} 
+                  onChange={e => setForm({ ...form, bankAccount: e.target.value })} required />
+                <Input label="IFSC Code" value={form.ifsc || ""} 
+                  onChange={e => setForm({ ...form, ifsc: e.target.value.toUpperCase() })} required />
+              </div>
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">
+                <strong>Note:</strong> Ensure the bank account name matches your registered entity name to avoid payment delays.
+              </div>
             </div>
           )}
 
           {/* NAVIGATION BUTTONS */}
-          <div className="pt-8 border-t border-slate-100 flex justify-between gap-4">
+          <div className="pt-8 border-t border-slate-100 flex justify-between items-center gap-4">
             <button
               type="button"
               onClick={prev}
-              disabled={step === 1}
-              className={`px-6 py-2 rounded-xl font-semibold transition-all ${step === 1 ? "invisible" : "bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-2"}`}
+              disabled={step === 1 || isSaving}
+              className={`px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 
+                ${step === 1 ? "invisible" : "bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"}`}
             >
               <FiArrowLeft /> Previous
             </button>
 
-            {step < 3 ? (
-              <button type="button" onClick={next} className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-semibold hover:bg-indigo-700 transition-all flex items-center gap-2">
-                Continue <FiArrowRight />
-              </button>
-            ) : (
-              <button type="button" onClick={submit} className="bg-emerald-600 text-white px-10 py-2 rounded-xl font-semibold hover:bg-emerald-700 transition-all flex items-center gap-2">
-                Complete Setup <FiCheck />
-              </button>
-            )}
+            <button 
+              type="button" 
+              onClick={() => handleSave(step === 3)} 
+              disabled={isSaving}
+              className={`min-w-[160px] flex justify-center items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-100
+                ${step === 3 
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700" 
+                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+                } disabled:opacity-70`}
+            >
+              {isSaving ? (
+                <>
+                  <FiLoader className="animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  {step === 3 ? "Complete Setup" : "Save & Continue"} 
+                  {step === 3 ? <FiCheck /> : <FiArrowRight />}
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>
@@ -175,16 +251,7 @@ const ProfileSkeleton = () => (
         </div>
       ))}
     </div>
-    <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="space-y-2">
-            <div className="h-4 bg-slate-100 rounded w-20"></div>
-            <div className="h-12 bg-slate-50 rounded-xl border border-slate-100"></div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <div className="bg-white rounded-3xl p-10 h-96 border border-slate-100 shadow-sm"></div>
   </div>
 );
 
