@@ -5,7 +5,8 @@ import {
   getVendors,
   getVendor,
   updateKYC,
-  rateVendor
+  rateVendor,
+  getVendorProducts,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.get("/vendors", getVendors);
 router.get("/vendors/:id", getVendor);
 router.put("/vendors/:id/kyc", updateKYC);
 router.put("/vendors/:id/rate", rateVendor);
+router.get("/vendors/:id/products", getVendorProducts);
 
 export default router;

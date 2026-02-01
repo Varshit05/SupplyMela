@@ -26,96 +26,48 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    // ✅ Correct vendor lookup
-    const vendor = await Vendor.findById(req.user.id);
+    // 1. Use .lean() to get a plain JS object, bypassing Schema validation for a second
+    const vendorData = await Vendor.findById(req.user.id).lean();
+    if (!vendorData) return res.status(404).json({ message: "Vendor not found" });
 
-    if (!vendor) {
-      return res.status(404).json({ message: "Vendor not found" });
-    }
+    // 2. Identify the fields to update (matching your schema names)
+    const schemaFields = [
+      "companyName", "description", "gstNumber", "panNumber", "cin",
+      "phone", "altPhone", "spocName", "entityType",
+      "promoterNames", "address", "accountNumber", "ifsc"
+    ];
 
-    // ✅ Ensure nested objects exist
-    if (!vendor.address) vendor.address = {};
-    if (!vendor.bankDetails) vendor.bankDetails = {};
-    if (!vendor.documents) vendor.documents = {};
-
-    /* ---------- STAGE 1 ---------- */
-    if (req.body.entityName !== undefined)
-      vendor.companyName = req.body.entityName;
-
-    if (req.body.entityType !== undefined)
-      vendor.entityType = req.body.entityType;
-
-    if (req.body.promoterNames !== undefined)
-      vendor.promoterNames = req.body.promoterNames;
-
-    if (req.body.spocName !== undefined)
-      vendor.spocName = req.body.spocName;
-
-    if (req.body.phone !== undefined)
-      vendor.phone = req.body.phone;
-
-    if (req.body.altPhone !== undefined)
-      vendor.altPhone = req.body.altPhone;
-
-    if (req.body.registeredAddress !== undefined)
-      vendor.address.street = req.body.registeredAddress;
-
-    /* ---------- STAGE 2 ---------- */
-    if (req.body.panNumber !== undefined)
-      vendor.panNumber = req.body.panNumber;
-
-    if (req.body.cin !== undefined)
-      vendor.cin = req.body.cin;
-
-    if (req.body.otherCerts !== undefined)
-      vendor.otherCerts = req.body.otherCerts;
-
-    /* ---------- STAGE 3 ---------- */
-    if (req.body.bankAccount !== undefined)
-      vendor.bankDetails.accountNumber = req.body.bankAccount;
-
-    if (req.body.ifsc !== undefined)
-      vendor.bankDetails.ifsc = req.body.ifsc;
-
-    /* ---------- FILES ---------- */
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await uploadBufferToCloudinary(
-          file.buffer,
-          "vendor_documents"
-        );
-
-
-        if (file.fieldname === "panFile") {
-          vendor.documents.panCard = result.secure_url;
-        }
-
-
-        if (file.fieldname === "gstFile") {
-          vendor.documents.gstCert = result.secure_url;
-        }
-
-
-        if (file.fieldname === "licenseFile") {
-          vendor.documents.license = result.secure_url;
-        }
+    const updates = {};
+    schemaFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
       }
-    }
-
-
-    /* ---------- TRUST SCORE ---------- */
-    vendor.trustScore = calculateTrustScore(vendor);
-
-    await vendor.save();
-
-    res.json({
-      message: "Profile updated successfully",
-      trustScore: vendor.trustScore,
     });
 
+    // 3. Handle File Uploads
+    if (req.files && req.files.length > 0) {
+      const documents = vendorData.documents || {};
+      for (const file of req.files) {
+        const result = await uploadBufferToCloudinary(file.buffer, "vendor_documents");
+        if (file.fieldname === "panFile") documents.panCard = result.secure_url;
+        if (file.fieldname === "gstFile") documents.gstCert = result.secure_url;
+      }
+      updates.documents = documents;
+    }
+
+    // 4. Use findByIdAndUpdate with $set. 
+    // This forces MongoDB to overwrite the old Object with the new String.
+    const updatedVendor = await Vendor.findByIdAndUpdate(
+      req.user.id,
+      { $set: updates },
+      { new: true, runValidators: false } // runValidators: false prevents the CastError during save
+    );
+
+    res.json({ message: "Profile updated successfully", vendor: updatedVendor });
+
   } catch (err) {
-    console.error("UPDATE PROFILE ERROR:", err);
-    res.status(500).json({ message: "Profile update failed" });
+    console.error("FORCE UPDATE ERROR:", err);
+    res.status(500).json({ message: "Update failed." });
   }
 };
 

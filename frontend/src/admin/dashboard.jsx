@@ -86,12 +86,12 @@ const AdminDashboard = () => {
                   {/* UPDATED: Star Rating Display */}
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-0.5">
-                      {v.trustScore > 0 ? (
+                      {v.trust.rating > 0 ? (
                         [1, 2, 3, 4, 5].map((s) => (
                           <FiStar 
                             key={s} 
                             size={14} 
-                            className={s <= v.trustScore ? "fill-amber-400 text-amber-400" : "text-slate-200"} 
+                            className={s <= v.trust.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"} 
                           />
                         ))
                       ) : (

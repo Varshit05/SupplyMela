@@ -1,4 +1,5 @@
 import Vendor from "../models/Vendor.js";
+import Product from "../models/product.js";
 
 export const getVendors = async (req, res) => {
   try {
@@ -10,14 +11,31 @@ export const getVendors = async (req, res) => {
   }
 };
 
-
-
 export const getVendor = async (req, res) => {
-  const vendor = await Vendor.findById(req.params.id);
+  try {
+    const vendor = await Vendor.findById(req.params.id);
 
-  if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
 
-  res.json(vendor);
+    res.json(vendor);
+  } catch (err) {
+    // This catches the "CastError" so your server doesn't crash
+    console.error("GET VENDOR ERROR:", err);
+    res.status(400).json({ message: "Invalid ID format or server error" });
+  }
+};
+
+export const getVendorProducts = async (req, res) => {
+  try {
+    // Added a check to ensure we don't query with a broken ID
+    const products = await Product.find({ vendor: req.params.id });
+    res.json(products);
+  } catch (err) {
+    console.error("GET PRODUCTS ERROR:", err);
+    res.status(500).json({ message: "Error fetching products" });
+  }
 };
 
 

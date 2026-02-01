@@ -8,8 +8,8 @@ const VendorList = () => {
   useEffect(() => {
     api.get("/vendors").then((res) => {
       const filteredAndSorted = res.data
-      .filter((v) => v.kycStatus === "approved")
-      .sort((a, b) => (b.trust?.rating || 0) - (a.trust?.rating || 0));
+        .filter((v) => v.kycStatus === "approved")
+        .sort((a, b) => (b.trust?.rating || 0) - (a.trust?.rating || 0));
       setVendors(filteredAndSorted);
     });
   }, []);
@@ -42,12 +42,15 @@ const VendorList = () => {
 
                 {/* KYC Status Badge */}
                 <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${v.kycStatus === "approved"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-700"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-amber-100 text-amber-700"
                   }`}>
                   {v.kycStatus || "pending"}
                 </span>
               </div>
+              <p className="text-slate-600 text-sm leading-relaxed line-clamp-2 mb-4">
+                {v.description || ""}
+              </p>
 
               {/* NEW: Star Rating Display instead of Progress Bar */}
               <div className="mt-6 p-3 bg-slate-50 rounded-xl flex items-center justify-between">
@@ -60,8 +63,8 @@ const VendorList = () => {
                       key={star}
                       size={16}
                       className={`${star <= (v.trust?.rating || 0)
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-slate-200 fill-slate-100"
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-slate-200 fill-slate-100"
                         }`}
                     />
                   ))}

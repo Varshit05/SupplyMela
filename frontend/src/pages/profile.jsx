@@ -3,28 +3,54 @@ import api from "../api/vendorAxios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Input, Textarea, Upload } from "../components/FormElements";
-import { 
-  FiUser, 
-  FiFileText, 
-  FiCreditCard, 
-  FiArrowLeft, 
-  FiArrowRight, 
+import {
+  FiUser,
+  FiFileText,
+  FiCreditCard,
+  FiArrowLeft,
+  FiArrowRight,
   FiCheck,
-  FiLoader 
+  FiLoader,
+  FiX
 } from "react-icons/fi";
 
 const Profile = () => {
   const [form, setForm] = useState({});
+  const [existingDocs, setExistingDocs] = useState({});
+  const [selectedFileNames, setSelectedFileNames] = useState({
+    panFile: "",
+    gstFile: ""
+  });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
 
-  // Fetch existing data on mount
   useEffect(() => {
     api.get("/vendors/profile")
       .then(res => {
-        setForm(res.data || {});
+        let data = res.data || {};
+
+        // 1. Capture the existing Cloudinary URLs from the nested documents object
+        if (data.documents) {
+          setExistingDocs({
+            panCard: data.documents.panCard,
+            gstCert: data.documents.gstCert,
+          });
+        }
+
+        // 2. Handle legacy address object (as discussed)
+        if (data.address && typeof data.address === 'object') {
+          data.address = data.address.street || "";
+        }
+
+        // 3. Clean the form state (exclude files but keep text fields)
+        const FILE_KEYS = ["panFile", "gstFile", "documents"];
+        const safeForm = Object.fromEntries(
+          Object.entries(data).filter(([key]) => !FILE_KEYS.includes(key))
+        );
+
+        setForm(safeForm);
         setLoading(false);
       })
       .catch(() => {
@@ -33,29 +59,51 @@ const Profile = () => {
       });
   }, []);
 
+
   const handleFile = (e, key) => {
-    setForm({ ...form, [key]: e.target.files[0] });
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 1. Update the form data for the API
+    setForm(prev => ({
+      ...prev,
+      [key]: file
+    }));
+
+    // 2. Update the UI display name
+    setSelectedFileNames(prev => ({
+      ...prev,
+      [key]: file.name
+    }));
   };
+
 
   const prev = () => setStep(s => s - 1);
 
   // Unified Save & Continue Logic
   const handleSave = async (isFinal = false) => {
     setIsSaving(true);
-    
+
     const fd = new FormData();
     // Append all current form fields to FormData
     Object.entries(form).forEach(([key, value]) => {
-      // Only append if value exists to avoid sending "undefined" strings
-      if (value !== null && value !== undefined) {
+      // send files only if user selected them
+      if (value instanceof File) {
+        fd.append(key, value);
+        return;
+      }
+
+      // send ALL text fields (even empty string)
+      if (typeof value === "string" || typeof value === "number") {
         fd.append(key, value);
       }
     });
 
+
     try {
       await api.put("/vendors/profile", fd);
       toast.success(isFinal ? "Profile updated!" : "Progress saved");
-      
+
       if (isFinal) {
         navigate("/dashboard");
       } else {
@@ -67,6 +115,20 @@ const Profile = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+  const removeSelectedFile = (key) => {
+    // 1. Remove the File object from the form state
+    setForm(prev => {
+      const newForm = { ...prev };
+      delete newForm[key];
+      return newForm;
+    });
+
+    // 2. Clear the filename from the UI state
+    setSelectedFileNames(prev => ({
+      ...prev,
+      [key]: ""
+    }));
   };
 
   if (loading) return <ProfileSkeleton />;
@@ -88,9 +150,8 @@ const Profile = () => {
           { s: 3, label: "Banking", icon: <FiCreditCard /> }
         ].map((item) => (
           <div key={item.s} className="flex flex-col items-center gap-2 bg-slate-50 md:bg-transparent px-2">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-              step >= item.s ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-400"
-            }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= item.s ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-400"
+              }`}>
               {step > item.s ? <FiCheck strokeWidth={3} /> : item.icon}
             </div>
             <span className={`text-[10px] md:text-xs font-bold uppercase tracking-wider ${step >= item.s ? "text-indigo-600" : "text-slate-400"}`}>
@@ -103,15 +164,15 @@ const Profile = () => {
       {/* Form Card */}
       <div className="card shadow-xl border-none p-6 md:p-10 bg-white rounded-3xl">
         <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-          
+
           {/* STEP 1: Business Info */}
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <Input label="Entity Name" value={form.entityName || ""} 
-                  onChange={e => setForm({ ...form, entityName: e.target.value })} required />
+                <Input label="Entity Name" value={form.companyName || ""}
+                  onChange={e => setForm({ ...form, companyName: e.target.value })} required />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Entity Type</label>
                 <select
@@ -127,18 +188,26 @@ const Profile = () => {
                 </select>
               </div>
 
-              <Input label="SPOC Name" value={form.spocName || ""} 
+              <Input label="SPOC Name" value={form.spocName || ""}
                 onChange={e => setForm({ ...form, spocName: e.target.value })} required />
 
-              <Input label="Phone Number (+91)" value={form.phone || ""} 
+              <Input label="Phone Number (+91)" value={form.phone || ""}
                 onChange={e => setForm({ ...form, phone: e.target.value })} required />
 
-              <Input label="Alternative Contact" value={form.altPhone || ""} 
+              <Input label="Alternative Contact" value={form.altPhone || ""}
                 onChange={e => setForm({ ...form, altPhone: e.target.value })} />
+              <div className="md:col-span-2">
+                <Textarea
+                  label="Business Description"
+                  value={form.description || ""}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  rows={4}
+                />
+              </div>
 
               <div className="md:col-span-2">
-                <Textarea label="Registered Address" value={form.registeredAddress || ""} 
-                  onChange={e => setForm({ ...form, registeredAddress: e.target.value })} required />
+                <Textarea label="Registered Address" value={form.address || ""}
+                  onChange={e => setForm({ ...form, address: e.target.value })} required />
               </div>
             </div>
           )}
@@ -146,32 +215,125 @@ const Profile = () => {
           {/* STEP 2: Compliance (Improved Layout) */}
           {step === 2 && (
             <div className="space-y-8">
+              {/* Identity Details Section */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
                   <h3 className="text-lg font-bold text-slate-800">Identity Details</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input label="PAN Number" value={form.panNumber || ""} 
-                    onChange={e => setForm({ ...form, panNumber: e.target.value.toUpperCase() })} required />
-                  <Input label="GST Number" value={form.gstNumber || ""} 
-                    onChange={e => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })} required />
-                    <Input label="CIN (Optional)" value={form.cin || ""} 
-                      onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })} />
+                  <Input
+                    label="PAN Number"
+                    value={form.panNumber || ""}
+                    onChange={e => setForm({ ...form, panNumber: e.target.value.toUpperCase() })}
+                    required
+                  />
+                  <Input
+                    label="GST Number"
+                    value={form.gstNumber || ""}
+                    onChange={e => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })}
+                    required
+                  />
+                  <Input
+                    label="CIN (Optional)"
+                    value={form.cin || ""}
+                    onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })}
+                  />
                 </div>
               </section>
 
               <hr className="border-slate-100" />
 
+              {/* Supporting Documents Section */}
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
                   <h3 className="text-lg font-bold text-slate-800">Supporting Documents</h3>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                  <Upload label="PAN Card Document" onChange={e => handleFile(e, "panFile")} required />
-                  <Upload label="GST Certificate(s)" onChange={e => handleFile(e, "gstFile")} required />
+
+                  {/* PAN Upload Card */}
+                  <div className="space-y-3">
+                    <Upload
+                      label="PAN Card Document"
+                      onChange={e => handleFile(e, "panFile")}
+                      required={!existingDocs.panCard}
+                    />
+
+                    <div className="flex flex-col gap-2">
+                      {/* STAGED FILE WITH REMOVE OPTION */}
+                      {selectedFileNames.panFile && (
+                        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl group">
+                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 truncate">
+                            <FiFileText className="shrink-0" />
+                            <span className="truncate">{selectedFileNames.panFile}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedFile("panFile")}
+                            className="p-1 hover:bg-indigo-200 rounded-full text-indigo-600 transition-colors"
+                            title="Remove file"
+                          >
+                            <FiX size={16} strokeWidth={3} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* EXISTING FILE FEEDBACK */}
+                      {existingDocs.panCard && (
+                        <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded-md border w-fit transition-all ${selectedFileNames.panFile ? "opacity-40 grayscale" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
+                          <FiCheck />
+                          <a href={existingDocs.panCard} target="_blank" rel="noreferrer" className="underline hover:text-emerald-700">
+                            {selectedFileNames.panFile ? "Replacing current document" : "View Current PAN"}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* GST Upload Card */}
+                  <div className="space-y-3">
+                    <Upload
+                      label="GST Certificate(s)"
+                      onChange={e => handleFile(e, "gstFile")}
+                      required={!existingDocs.gstCert}
+                    />
+
+                    <div className="flex flex-col gap-2">
+                      {/* STAGED FILE WITH REMOVE OPTION */}
+                      {selectedFileNames.gstFile && (
+                        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl group">
+                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 truncate">
+                            <FiFileText className="shrink-0" />
+                            <span className="truncate">{selectedFileNames.gstFile}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedFile("gstFile")}
+                            className="p-1 hover:bg-indigo-200 rounded-full text-indigo-600 transition-colors"
+                            title="Remove file"
+                          >
+                            <FiX size={16} strokeWidth={3} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* EXISTING FILE FEEDBACK */}
+                      {existingDocs.gstCert && (
+                        <div className={`flex items-center gap-2 text-xs font-medium px-2 py-1 rounded-md border w-fit transition-all ${selectedFileNames.gstFile ? "opacity-40 grayscale" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
+                          <FiCheck />
+                          <a href={existingDocs.gstCert} target="_blank" rel="noreferrer" className="underline hover:text-emerald-700">
+                            {selectedFileNames.gstFile ? "Replacing current document" : "View Current GST"}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                <p className="mt-4 text-xs text-slate-400 italic">
+                  * Uploading a new file will replace the existing document once you click Save.
+                </p>
               </section>
             </div>
           )}
@@ -179,14 +341,14 @@ const Profile = () => {
           {/* STEP 3: Banking */}
           {step === 3 && (
             <div className="space-y-6">
-               <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
-                  <h3 className="text-lg font-bold text-slate-800">Banking Information</h3>
-                </div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-6 bg-indigo-600 rounded-full"></div>
+                <h3 className="text-lg font-bold text-slate-800">Banking Information</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Bank Account Number" value={form.bankAccount || ""} 
-                  onChange={e => setForm({ ...form, bankAccount: e.target.value })} required />
-                <Input label="IFSC Code" value={form.ifsc || ""} 
+                <Input label="Bank Account Number" value={form.accountNumber || ""}
+                  onChange={e => setForm({ ...form, accountNumber: e.target.value })} required />
+                <Input label="IFSC Code" value={form.ifsc || ""}
                   onChange={e => setForm({ ...form, ifsc: e.target.value.toUpperCase() })} required />
               </div>
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">
@@ -207,13 +369,13 @@ const Profile = () => {
               <FiArrowLeft /> Previous
             </button>
 
-            <button 
-              type="button" 
-              onClick={() => handleSave(step === 3)} 
+            <button
+              type="button"
+              onClick={() => handleSave(step === 3)}
               disabled={isSaving}
               className={`min-w-[160px] flex justify-center items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-100
-                ${step === 3 
-                  ? "bg-emerald-600 text-white hover:bg-emerald-700" 
+                ${step === 3
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
                   : "bg-indigo-600 text-white hover:bg-indigo-700"
                 } disabled:opacity-70`}
             >
@@ -223,7 +385,7 @@ const Profile = () => {
                 </>
               ) : (
                 <>
-                  {step === 3 ? "Complete Setup" : "Save & Continue"} 
+                  {step === 3 ? "Complete Setup" : "Save & Continue"}
                   {step === 3 ? <FiCheck /> : <FiArrowRight />}
                 </>
               )}
