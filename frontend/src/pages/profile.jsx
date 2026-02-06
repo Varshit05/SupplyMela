@@ -82,28 +82,47 @@ const Profile = () => {
 
   // Unified Save & Continue Logic
   const handleSave = async (isFinal = false) => {
-    setIsSaving(true);
+    // --- VALIDATION LOGIC ---
+    if (step === 1) {
+      // Only validate phone on Step 1
+      if (form.phone && !/^\d{10}$/.test(form.phone)) {
+        return toast.error("Phone number must be exactly 10 digits");
+      }
+    }
 
+    if (step === 2) {
+      // Only validate PAN/GST when trying to leave Step 2
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      const cinRegex = /^[A-Z]{1}[0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/;
+
+      if (form.panNumber && !panRegex.test(form.panNumber)) {
+        return toast.error("Invalid PAN No.");
+      }
+      if (form.gstNumber && !gstRegex.test(form.gstNumber)) {
+        return toast.error("Invalid GST No.");
+      }
+      if (form.cin && !cinRegex.test(form.cin)) {
+        return toast.error("Invalid CIN");
+      }
+    }
+    // Proceed with Saving
+    setIsSaving(true);
     const fd = new FormData();
-    // Append all current form fields to FormData
+
     Object.entries(form).forEach(([key, value]) => {
-      // send files only if user selected them
       if (value instanceof File) {
         fd.append(key, value);
         return;
       }
-
-      // send ALL text fields (even empty string)
       if (typeof value === "string" || typeof value === "number") {
         fd.append(key, value);
       }
     });
 
-
     try {
       await api.put("/vendors/profile", fd);
       toast.success(isFinal ? "Profile updated!" : "Progress saved");
-
       if (isFinal) {
         navigate("/dashboard");
       } else {
@@ -111,7 +130,7 @@ const Profile = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Update failed. Please check your details.");
+      toast.error(err.response?.data?.message || "Update failed.");
     } finally {
       setIsSaving(false);
     }
@@ -170,6 +189,7 @@ const Profile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <Input label="Entity Name" value={form.companyName || ""}
+                placeholder="Registered business name"
                   onChange={e => setForm({ ...form, companyName: e.target.value })} required />
               </div>
 
@@ -189,17 +209,27 @@ const Profile = () => {
               </div>
 
               <Input label="SPOC Name" value={form.spocName || ""}
+              placeholder="Point of Contact"
                 onChange={e => setForm({ ...form, spocName: e.target.value })} required />
 
-              <Input label="Phone Number (+91)" value={form.phone || ""}
+              <Input
+                label="Phone Number (+91)"
+                value={form.phone || ""}
+                placeholder="e.g. 9876543210"
+                maxLength={10}
                 onChange={e => setForm({ ...form, phone: e.target.value })} required />
 
-              <Input label="Alternative Contact" value={form.altPhone || ""}
+              <Input
+                label="Alternative Contact"
+                value={form.altPhone || ""}
+                placeholder="e.g. 9123456780"
+                maxLength={10}
                 onChange={e => setForm({ ...form, altPhone: e.target.value })} />
               <div className="md:col-span-2">
                 <Textarea
                   label="Business Description"
                   value={form.description || ""}
+                  placeholder="Briefly describe your business..."
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   rows={4}
                 />
@@ -207,6 +237,7 @@ const Profile = () => {
 
               <div className="md:col-span-2">
                 <Textarea label="Registered Address" value={form.address || ""}
+                placeholder="Full registered business address"
                   onChange={e => setForm({ ...form, address: e.target.value })} required />
               </div>
             </div>
@@ -225,17 +256,22 @@ const Profile = () => {
                   <Input
                     label="PAN Number"
                     value={form.panNumber || ""}
+                    placeholder="e.g. ABCDE1234F"
+                    maxLength={10}
                     onChange={e => setForm({ ...form, panNumber: e.target.value.toUpperCase() })}
                     required
                   />
                   <Input
                     label="GST Number"
                     value={form.gstNumber || ""}
+                    placeholder="e.g. 22ABCDE1234F1Z5"
+                    maxLength={15}
                     onChange={e => setForm({ ...form, gstNumber: e.target.value.toUpperCase() })}
                     required
                   />
                   <Input
                     label="CIN (Optional)"
+                    placeholder="e.g. U12345MH2020PTC123456"
                     value={form.cin || ""}
                     onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })}
                   />
@@ -346,7 +382,7 @@ const Profile = () => {
                 <h3 className="text-lg font-bold text-slate-800">Banking Information</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Bank Account Number" value={form.accountNumber || ""}
+                <Input label="Bank Account Number" value={form.accountNumber || ""} placeholder="e.g. 123456789012"
                   onChange={e => setForm({ ...form, accountNumber: e.target.value })} required />
                 <Input label="IFSC Code" value={form.ifsc || ""}
                   onChange={e => setForm({ ...form, ifsc: e.target.value.toUpperCase() })} required />
