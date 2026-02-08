@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/vendorAxios";
 import { useNavigate } from "react-router-dom";
+import StarRating from "../components/Star";
 import {
   FiEdit,
   FiUser,
@@ -78,30 +79,20 @@ const Dashboard = () => {
             <FiShield className="text-indigo-600" /> Trust Rating
           </p>
 
-          <div className="flex gap-1 mb-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <FiStar
-                key={star}
-                size={28}
-                className={`${
-                  star <= (vendor.trust?.rating || 0)
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-slate-200 fill-slate-100"
-                }`}
-              />
-            ))}
+          {/* New Implementation */}
+          <div className="mb-2">
+            <StarRating rating={vendor.trust?.rating || 0} />
           </div>
 
           <p className="text-sm font-bold text-slate-700">
             {vendor.trust?.rating
-              ? `${vendor.trust.rating} / 5 Stars`
+              ? `${vendor.trust.rating.toFixed(1)} / 5 Stars` // toFixed(1) ensures 4.500001 displays as 4.5
               : "Not Rated Yet"}
           </p>
 
           {vendor.trust?.reviewedAt && (
             <p className="text-xs text-slate-400 mt-1">
-              Reviewed on{" "}
-              {new Date(vendor.trust.reviewedAt).toLocaleDateString()}
+              Reviewed on {new Date(vendor.trust.reviewedAt).toLocaleDateString()}
             </p>
           )}
         </div>
@@ -109,22 +100,20 @@ const Dashboard = () => {
         {/* KYC Status Card */}
         <div className="card flex flex-col items-center justify-center text-center">
           <div
-            className={`p-4 rounded-2xl mb-4 ${
-              vendor.kycStatus === "approved"
+            className={`p-4 rounded-2xl mb-4 ${vendor.kycStatus === "approved"
                 ? "bg-emerald-50 text-emerald-600"
                 : "bg-amber-50 text-amber-600"
-            }`}
+              }`}
           >
             <FiBarChart2 size={32} />
           </div>
 
           <p className="text-slate-500 font-medium">Verification Status</p>
           <h3
-            className={`text-xl font-bold mt-1 uppercase tracking-tight ${
-              vendor.kycStatus === "approved"
+            className={`text-xl font-bold mt-1 uppercase tracking-tight ${vendor.kycStatus === "approved"
                 ? "text-emerald-600"
                 : "text-amber-600"
-            }`}
+              }`}
           >
             {vendor.kycStatus || "Pending"}
           </h3>

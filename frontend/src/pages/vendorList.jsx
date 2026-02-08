@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/vendorAxios";
+import StarRating from "../components/Star";
 import { FiArrowRight, FiUsers, FiStar, FiCheckCircle } from "react-icons/fi";
 
 const VendorList = () => {
@@ -57,26 +58,18 @@ const VendorList = () => {
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   Trust Rating
                 </span>
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <FiStar
-                      key={star}
-                      size={16}
-                      className={`${star <= (v.trust?.rating || 0)
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-slate-200 fill-slate-100"
-                        }`}
-                    />
-                  ))}
+                <div className="flex items-center gap-2">
+                  {/* Pass the rating and a slightly smaller size for the grid layout */}
+                  <StarRating rating={v.trust?.rating || 0} size={16} />
 
+                  {/* <span className="text-sm font-bold text-slate-700">
+                    {v.trust?.rating
+                      ? v.trust.rating.toFixed(1)
+                      : "0.0"}
+                  </span> */}
                 </div>
               </div>
             </div>
-
-            {/* Action Button */}
-            {/* <button className="btn btn-secondary w-full mt-6 text-sm flex items-center justify-center gap-2 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-              View Profile <FiArrowRight className="transition-transform group-hover:translate-x-1" />
-            </button> */}
           </div>
         ))}
       </div>

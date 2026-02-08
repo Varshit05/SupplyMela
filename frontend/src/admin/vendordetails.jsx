@@ -61,12 +61,16 @@ const VendorDetails = () => {
 
   const saveRating = async (newScore) => {
     try {
+      // Ensure it's a number and fixed to 1 decimal place
+      const formattedScore = parseFloat(Number(newScore).toFixed(1));
+
       const res = await api.put(`/admin/vendors/${id}/rate`, {
-        rating: newScore
+        rating: formattedScore
       });
+
       setVendor((prev) => ({ ...prev, trust: res.data.trust }));
       setRating(res.data.trust.rating);
-      toast.success(`Trust rating updated to ${newScore} stars`);
+      toast.success(`Trust rating updated to ${formattedScore} stars`);
     } catch (err) {
       toast.error("Failed to update trust rating");
     }
@@ -168,15 +172,61 @@ const VendorDetails = () => {
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
               Trust Rating
             </h4>
-            <div className="flex justify-center gap-2 mb-3">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button key={star} onClick={() => saveRating(star)}>
-                  <FiStar
-                    size={32}
-                    className={`${star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-200 fill-slate-50"}`}
-                  />
-                </button>
-              ))}
+
+            {/* Interactive Star Display with Solid Fills */}
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => {
+                // Calculate fill percentage: 100% for full, 0% for empty, fractional for the decimal
+                const fillPercentage = Math.min(Math.max(rating - (star - 1), 0), 1) * 100;
+
+                return (
+                  <div key={star} className="relative inline-block cursor-pointer">
+                    {/* Base Layer: The "Empty" Star (Solid Light Gray Fill) */}
+                    <FiStar
+                      size={32}
+                      fill="#f8fafc" // slate-50 fill
+                      className="text-slate-200" // slate-200 outline
+                    />
+
+                    {/* Top Layer: The "Filled" Star (Solid Yellow Fill) */}
+                    <div
+                      className="absolute top-0 left-0 overflow-hidden pointer-events-none transition-all duration-300"
+                      style={{ width: `${fillPercentage}%` }}
+                    >
+                      <FiStar
+                        size={32}
+                        fill="#fbbf24" // amber-400 (Solid Yellow)
+                        className="text-amber-400"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Admin Control: Slider for Precise Fractions */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-2xl font-black text-slate-800">{rating.toFixed(1)}</span>
+                <span className="text-xs font-bold text-slate-400">/ 5.0</span>
+              </div>
+
+              <input
+                type="range"
+                min="0"
+                max="5"
+                step="0.1"
+                value={rating}
+                onChange={(e) => setRating(parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+
+              <button
+                onClick={() => saveRating(rating)}
+                className="w-full py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 transition-all shadow-md shadow-slate-200"
+              >
+                Save {rating.toFixed(1)} Rating
+              </button>
             </div>
           </div>
 

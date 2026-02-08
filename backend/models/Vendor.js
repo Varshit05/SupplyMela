@@ -46,7 +46,8 @@ const vendorSchema = new mongoose.Schema({
       type: Number,
       min: 0,
       max: 5,
-      default: 0
+      default: 0,
+      // set: v => Math.round(v * 10) / 10 // Round to 1 decimal place
     },
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,

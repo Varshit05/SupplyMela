@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/adminAxios";
 import { Link } from "react-router-dom";
+import FractionalRating from "../components/FractionalRating";
 import { FiUsers, FiSearch, FiArrowUpRight, FiShield, FiStar } from "react-icons/fi";
 
 const AdminDashboard = () => {
@@ -11,8 +12,8 @@ const AdminDashboard = () => {
     api.get("/admin/vendors").then((res) => setVendors(res.data));
   }, []);
 
-  const filteredVendors = vendors.filter(v => 
-    v.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredVendors = vendors.filter(v =>
+    v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     v.companyName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -24,11 +25,11 @@ const AdminDashboard = () => {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admin Dashboard</h1>
           <p className="text-slate-500 mt-1">Manage and verify your global network of vendors.</p>
         </div>
-        
+
         {/* Search Bar */}
         <div className="relative w-full md:w-96">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input 
+          <input
             type="text"
             placeholder="Search by name or company..."
             className="input pl-10 bg-white shadow-sm"
@@ -67,42 +68,42 @@ const AdminDashboard = () => {
                   <td className="p-4">
                     <p className="font-semibold text-slate-700">{v.name}</p>
                     <p className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter md:hidden">
-                       {v.companyName}
+                      {v.companyName}
                     </p>
                   </td>
                   <td className="p-4 text-slate-500 text-sm hidden md:table-cell">
                     {v.companyName || "—"}
                   </td>
-                  
+
                   <td className="p-4 text-center">
                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      v.kycStatus === "approved" ? "bg-emerald-100 text-emerald-700" : 
-                      v.kycStatus === "rejected" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                    }`}>
+                        v.kycStatus === "approved" ? "bg-emerald-100 text-emerald-700" :
+                        v.kycStatus === "rejected" ? "bg-rose-300 text-rose-900 border border-rose-300" : "bg-amber-100 text-amber-700"
+                      }`}>
                       {v.kycStatus || "pending"}
                     </span>
                   </td>
 
                   {/* UPDATED: Star Rating Display */}
+                  {/* UPDATED: Star Rating Display in Table */}
                   <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-0.5">
-                      {v.trust.rating > 0 ? (
-                        [1, 2, 3, 4, 5].map((s) => (
-                          <FiStar 
-                            key={s} 
-                            size={14} 
-                            className={s <= v.trust.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"} 
-                          />
-                        ))
-                      ) : (
-                        <span className="text-[10px] font-bold text-slate-300 uppercase italic">Unrated</span>
-                      )}
-                    </div>
+                    {v.trust?.rating > 0 ? (
+                      <div className="flex flex-col items-center gap-1">
+                        <FractionalRating rating={v.trust.rating} size={14} />
+                        <span className="text-[9px] font-bold text-slate-400">
+                          {v.trust.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-bold text-slate-300 uppercase italic">
+                        Unrated
+                      </span>
+                    )}
                   </td>
 
                   <td className="p-4 text-right">
-                    <Link 
-                      to={`/admin/vendors/${v._id}`} 
+                    <Link
+                      to={`/admin/vendors/${v._id}`}
                       className="inline-flex items-center gap-1 text-indigo-600 font-bold text-sm hover:text-indigo-800 transition-colors"
                     >
                       <span className="hidden sm:inline">Details</span> <FiArrowUpRight />
