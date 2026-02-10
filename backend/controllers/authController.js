@@ -2,6 +2,7 @@ import Vendor from "../models/Vendor.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import calculateTrustScore from "../utils/trustScore.js";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 const signToken = (user) =>
   jwt.sign(
@@ -13,7 +14,7 @@ const signToken = (user) =>
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
-
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /* ==================  VENDOR AUTH  ================== */
 
@@ -84,6 +85,60 @@ export const loginVendor = async (req, res) => {
 
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const { email, name, sub: googleId, picture } = ticket.getPayload();
+
+    // 1. Find or Create User
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        role: "vendor",
+        googleId,
+        password: Math.random().toString(36).slice(-16), // Dummy password for schema requirements
+      });
+    }
+
+    // 2. Find or Create Vendor
+    let vendor = await Vendor.findOne({ email });
+    if (!vendor) {
+      vendor = await Vendor.create({
+        name,
+        email,
+        user: user._id,
+        role: "vendor",
+        // If your Vendor model requires a password, we must provide one
+        password: user.password || Math.random().toString(36).slice(-16), 
+      });
+    }
+
+    // 3. Generate the token
+    // IMPORTANT: Make sure signToken is using vendor._id if that's what your context expects
+    const appToken = signToken({ _id: vendor._id, role: "vendor" });
+
+    res.json({
+      token: appToken,
+      role: "vendor",
+      vendorId: vendor._id,
+      user: { name: user.name, email: user.email, picture }
+    });
+
+  } catch (err) {
+    console.error("🔥 GOOGLE LOGIN ERROR:", err);
+    // Send the actual error message back during debugging to see what's wrong
+    res.status(401).json({ message: "Google authentication failed", error: err.message });
   }
 };
 
