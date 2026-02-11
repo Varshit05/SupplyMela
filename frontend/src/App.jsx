@@ -33,26 +33,7 @@ const App = () => {
     <BrowserRouter>
       <ToastContainer position="bottom-right" />
 
-      <Routes>
-
-        {/* ---------- VENDOR AUTH ---------- */}
-        <Route
-          path="/login"
-          element={
-            <VendorAuthProvider>
-              <Login />
-            </VendorAuthProvider>
-          }
-        />
-
-        <Route
-          path="/register"
-          element={
-            <VendorAuthProvider>
-              <Register />
-            </VendorAuthProvider>
-          }
-        />
+      <Routes>   
 
         {/* ---------- VENDOR APP ---------- */}
         <Route
@@ -63,6 +44,19 @@ const App = () => {
             </VendorAuthProvider>
           }
         >
+          <Route
+          path="/login"
+          element={
+            <Login />
+          }
+        />
+
+        <Route
+          path="/register"
+          element={
+            <Register />
+          }
+        />
           <Route index element={<VendorList />} />
 
           <Route

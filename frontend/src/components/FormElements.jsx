@@ -1,4 +1,3 @@
-// src/components/FormElements.jsx
 import { FiUploadCloud } from "react-icons/fi";
 
 export const Input = ({ label, ...props }) => (

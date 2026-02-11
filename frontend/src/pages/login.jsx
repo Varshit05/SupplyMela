@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/vendorAxios";
 import { useVendorAuth } from "../context/vendorAuthContext";
 import { useNavigate, Link } from "react-router-dom";
@@ -7,6 +7,28 @@ const Login = () => {
   const [form, setForm] = useState({});
   const { login, token } = useVendorAuth();
   const navigate = useNavigate();
+  useEffect(() => {
+    if(window.google){
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: handleGoogleLogin
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById("googleSignIn"),
+        { theme: "outline", size: "large", width: "100%"}
+      );
+    }
+  }, []);
+
+  const handleGoogleLogin = async (response) => {
+    try {
+      const res = await api.post("/auth/google-login", { token: response.credential });
+      login(res.data.token);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Google login failed", err);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -62,6 +84,15 @@ const Login = () => {
             Sign In
           </button>
         </form>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t"></span></div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-slate-500">Or</span>
+          </div>
+        </div>
+
+        <div id="googleSignIn" className="w-full"></div>
+        
 
         {!token && (
           <p className="mt-8 text-center text-sm text-slate-600">

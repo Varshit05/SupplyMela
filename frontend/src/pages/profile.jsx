@@ -82,9 +82,12 @@ const Profile = () => {
 
   // Unified Save & Continue Logic
   const handleSave = async (isFinal = false) => {
-    // --- VALIDATION LOGIC ---
     if (step === 1) {
-      // Only validate phone on Step 1
+      const requiredFields = ["companyName", "entityType", "spocName", "phone", "address"];
+      const missingField = requiredFields.filter(field=> !form[field] || form[field].trim()==="");
+      if(missingField.length) {
+        return toast.error(`Please fill in the required fields(*)`);
+      }
       if (form.phone && !/^\d{10}$/.test(form.phone)) {
         return toast.error("Phone number must be exactly 10 digits");
       }
@@ -92,6 +95,13 @@ const Profile = () => {
 
     if (step === 2) {
       // Only validate PAN/GST when trying to leave Step 2
+      const requiredFields = ["panNumber", "gstNumber"];
+      const missingField = requiredFields.filter(field=> !form[field] || form[field].trim==="");
+      const noPanFile = !form.panFile && !existingDocs.panCard;
+      const noGstFile = !form.gstFile && !existingDocs.gstCert;
+      if(missingField.length || noPanFile || noGstFile) {
+        return toast.error(`Please complete all compliance details and uploads before proceeding.`);
+      }
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
       const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
       const cinRegex = /^[A-Z]{1}[0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/;
@@ -104,6 +114,13 @@ const Profile = () => {
       }
       if (form.cin && !cinRegex.test(form.cin)) {
         return toast.error("Invalid CIN");
+      }
+    }
+    if (step === 3) {
+      const requiredFields = ["accountNumber", "ifsc"];
+      const missingField = requiredFields.filter(field=> !form[field] || form[field].trim==="");
+      if(missingField.length) {
+        return toast.error(`Please fill in the required fields(*)`);
       }
     }
     // Proceed with Saving
@@ -188,13 +205,16 @@ const Profile = () => {
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <Input label="Entity Name" value={form.companyName || ""}
+                <Input label={<>Entity Name <span className="text-red-500">*</span></>}
+                 value={form.companyName || ""}
                 placeholder="Registered business name"
-                  onChange={e => setForm({ ...form, companyName: e.target.value })} required />
+                  onChange={e => setForm({ ...form, companyName: e.target.value })}
+                  required 
+                />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Entity Type</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Entity Type <span className="text-red-500">*</span> </label>
                 <select
                   className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={form.entityType || ""}
@@ -208,12 +228,12 @@ const Profile = () => {
                 </select>
               </div>
 
-              <Input label="SPOC Name" value={form.spocName || ""}
+              <Input label={<>SPOC Name <span className="text-red-500">*</span></>} value={form.spocName || ""}
               placeholder="Point of Contact"
                 onChange={e => setForm({ ...form, spocName: e.target.value })} required />
 
               <Input
-                label="Phone Number (+91)"
+                label={<>Contact Number <span className="text-red-500">*</span></>}
                 value={form.phone || ""}
                 placeholder="e.g. 9876543210"
                 maxLength={10}
@@ -225,6 +245,7 @@ const Profile = () => {
                 placeholder="e.g. 9123456780"
                 maxLength={10}
                 onChange={e => setForm({ ...form, altPhone: e.target.value })} />
+
               <div className="md:col-span-2">
                 <Textarea
                   label="Business Description"
@@ -236,7 +257,8 @@ const Profile = () => {
               </div>
 
               <div className="md:col-span-2">
-                <Textarea label="Registered Address" value={form.address || ""}
+                <Textarea label={<>Registered Address <span className="text-red-500">*</span></>} 
+                value={form.address || ""}
                 placeholder="Full registered business address"
                   onChange={e => setForm({ ...form, address: e.target.value })} required />
               </div>
@@ -254,7 +276,7 @@ const Profile = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
-                    label="PAN Number"
+                    label={<>PAN Number <span className="text-red-500">*</span></>}
                     value={form.panNumber || ""}
                     placeholder="e.g. ABCDE1234F"
                     maxLength={10}
@@ -262,7 +284,7 @@ const Profile = () => {
                     required
                   />
                   <Input
-                    label="GST Number"
+                    label={<>GST Number <span className="text-red-500">*</span></>}
                     value={form.gstNumber || ""}
                     placeholder="e.g. 22ABCDE1234F1Z5"
                     maxLength={15}
@@ -270,7 +292,7 @@ const Profile = () => {
                     required
                   />
                   <Input
-                    label="CIN (Optional)"
+                    label="CIN"
                     placeholder="e.g. U12345MH2020PTC123456"
                     value={form.cin || ""}
                     onChange={e => setForm({ ...form, cin: e.target.value.toUpperCase() })}
@@ -292,7 +314,7 @@ const Profile = () => {
                   {/* PAN Upload Card */}
                   <div className="space-y-3">
                     <Upload
-                      label="PAN Card Document"
+                      label={<>PAN Card <span className="text-red-500">*</span></>}
                       onChange={e => handleFile(e, "panFile")}
                       required={!existingDocs.panCard}
                     />
@@ -331,7 +353,7 @@ const Profile = () => {
                   {/* GST Upload Card */}
                   <div className="space-y-3">
                     <Upload
-                      label="GST Certificate(s)"
+                      label={<>GST Certificate <span className="text-red-500">*</span></>}
                       onChange={e => handleFile(e, "gstFile")}
                       required={!existingDocs.gstCert}
                     />
@@ -382,9 +404,13 @@ const Profile = () => {
                 <h3 className="text-lg font-bold text-slate-800">Banking Information</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Bank Account Number" value={form.accountNumber || ""} placeholder="e.g. 123456789012"
+                <Input label={<>Bank Account Number <span className="text-red-500">*</span></>} 
+                value={form.accountNumber || ""} 
+                placeholder="e.g. 123456789012"
                   onChange={e => setForm({ ...form, accountNumber: e.target.value })} required />
-                <Input label="IFSC Code" value={form.ifsc || ""}
+                <Input label={<>IFSC Code <span className="text-red-500">*</span></>}
+                value={form.ifsc || ""}
+                placeholder="e.g. BANK0001234"
                   onChange={e => setForm({ ...form, ifsc: e.target.value.toUpperCase() })} required />
               </div>
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">

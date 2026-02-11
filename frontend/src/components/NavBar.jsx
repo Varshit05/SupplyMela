@@ -1,4 +1,3 @@
-// components/Navbar.jsx
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useVendorAuth } from "../context/vendorAuthContext";
@@ -22,7 +21,6 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-6 py-3">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
 
-        {/* Branding */}
         {/* Branding */}
         <Link to="/" className="flex items-center group">
           <img
