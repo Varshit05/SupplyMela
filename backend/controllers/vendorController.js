@@ -44,6 +44,9 @@ export const updateProfile = async (req, res) => {
       }
     });
 
+    updates.hasUnseenChanges = true; // Mark that the vendor has made updates, for admin review
+    updates.kycStatus = "pending"; // Reset KYC status to pending on any update
+
     // 3. Handle File Uploads
     if (req.files && req.files.length > 0) {
       const documents = vendorData.documents || {};
@@ -63,7 +66,7 @@ export const updateProfile = async (req, res) => {
       { new: true, runValidators: false } // runValidators: false prevents the CastError during save
     );
 
-    res.json({ message: "Profile updated successfully", vendor: updatedVendor });
+    res.json({ message: "Profile updated and pending review", vendor: updatedVendor });
 
   } catch (err) {
     console.error("FORCE UPDATE ERROR:", err);
@@ -80,11 +83,16 @@ export const getAllVendors = async (req, res) => {
 };
 
 export const getVendorById = async (req, res) => {
-  const vendor = await Vendor.findById(req.params.id).select("-password");
-  if (!vendor) {
-    return res.status(404).json({ message: "Vendor not found" });
-  }
-  res.json(vendor);
+  try {
+    const vendor = await Vendor.findById(req.params.id).select("-password");
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+    res.json(vendor);
+  } catch (err) {
+    console.error("GET VENDOR BY ID ERROR:", err);
+    res.status(400).json({ message: "Invalid ID format or server error" });
+  } 
 };
 
 
@@ -124,9 +132,8 @@ export const uploadVendorDocument = async (req, res) => {
     }
 
 
-    vendor.trustScore = calculateTrustScore(vendor);
+    vendor.hasUnseenChanges=true;
     vendor.kycStatus = "pending";
-
 
     await vendor.save();
 

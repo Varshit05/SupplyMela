@@ -13,7 +13,12 @@ export const getVendors = async (req, res) => {
 
 export const getVendor = async (req, res) => {
   try {
-    const vendor = await Vendor.findById(req.params.id);
+    // UPDATED: This now resets the flag when the admin views the vendor
+    const vendor = await Vendor.findByIdAndUpdate(
+      req.params.id,
+      { $set: { hasUnseenChanges: false } },
+      { new: true, runValidators: false }
+    );
 
     if (!vendor) {
       return res.status(404).json({ message: "Vendor not found" });
@@ -21,7 +26,6 @@ export const getVendor = async (req, res) => {
 
     res.json(vendor);
   } catch (err) {
-    // This catches the "CastError" so your server doesn't crash
     console.error("GET VENDOR ERROR:", err);
     res.status(400).json({ message: "Invalid ID format or server error" });
   }

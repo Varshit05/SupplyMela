@@ -57,6 +57,7 @@ const vendorSchema = new mongoose.Schema({
       type: Date
     }
   },
+  hasUnseenChanges: { type: Boolean, default: false },
 
   role: { type: String, default: "vendor" },
   createdAt: { type: Date, default: Date.now },

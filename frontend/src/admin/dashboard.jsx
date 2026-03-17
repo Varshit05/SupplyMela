@@ -7,18 +7,66 @@ import { FiUsers, FiSearch, FiArrowUpRight, FiShield, FiStar } from "react-icons
 const AdminDashboard = () => {
   const [vendors, setVendors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showUpdatesOnly, setShowUpdatesOnly] = useState(false);
 
   useEffect(() => {
-    api.get("/admin/vendors").then((res) => setVendors(res.data));
+    const fetchVendors = async () => {
+      try {
+        // Adding the timestamp ?t=... ensures the browser doesn't use a cached version
+        const res = await api.get(`/vendors?t=${Date.now()}`);
+        setVendors(res.data);
+      } catch (err) {
+        console.error("Failed to fetch vendors", err);
+      }
+    };
+    fetchVendors();
+    window.addEventListener('focus', fetchVendors);
+    return () => {
+      window.removeEventListener('focus', fetchVendors);
+    };
   }, []);
 
-  const filteredVendors = vendors.filter(v =>
-    v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    v.companyName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredVendors = vendors.filter(v => {
+    const matchesSearch = v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // If showOnlyUpdates is true, we add an extra condition
+    if (showUpdatesOnly) {
+      return matchesSearch && v.hasUnseenChanges;
+    }
+
+    return matchesSearch;
+  });
+
+  // Change this block in your AdminDashboard
+  const updatedVendorsList = filteredVendors.map(v => ({
+    ...v,
+    // Ensure this matches the property name from your backend (e.g., hasUnseenChanges)
+    isNotify: v.hasUnseenChanges === true
+  }));
+
+  const totalUpdatesCount = updatedVendorsList.filter(v => v.isNotify).length;
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {totalUpdatesCount > 0 && (
+        <div className="bg-indigo-600 text-white px-4 py-3 rounded-xl flex items-center justify-between shadow-lg shadow-indigo-200">
+          <div className="flex items-center gap-3">
+            <div className="bg-white/20 p-2 rounded-lg">
+              <FiShield className="animate-bounce" />
+            </div>
+            <p className="text-sm font-medium">
+              There are <strong>{totalUpdatesCount}</strong> vendor profiles with recent changes requiring review.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowUpdatesOnly(!showUpdatesOnly)}
+            className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-colors ${showUpdatesOnly ? "bg-amber-400 text-slate-900" : "bg-white text-indigo-600"
+              }`}
+          >
+            {showUpdatesOnly ? "Show All Vendors" : "View Only Updates"}
+          </button>
+        </div>
+      )}
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -63,10 +111,19 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredVendors.map((v) => (
+              {updatedVendorsList.map((v) => (
                 <tr key={v._id} className="hover:bg-slate-50/80 transition-colors group">
                   <td className="p-4">
-                    <p className="font-semibold text-slate-700">{v.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-700">{v.name}</p>
+                      {/* NEW: Notification badge for changes */}
+                      {v.isNotify && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter md:hidden">
                       {v.companyName}
                     </p>
@@ -76,9 +133,8 @@ const AdminDashboard = () => {
                   </td>
 
                   <td className="p-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        v.kycStatus === "approved" ? "bg-emerald-100 text-emerald-700" :
-                        v.kycStatus === "rejected" ? "bg-rose-300 text-rose-900 border border-rose-300" : "bg-amber-100 text-amber-700"
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${v.kycStatus === "approved" ? "bg-emerald-100 text-emerald-700" :
+                      v.kycStatus === "rejected" ? "bg-rose-300 text-rose-900 border border-rose-300" : "bg-amber-100 text-amber-700"
                       }`}>
                       {v.kycStatus || "pending"}
                     </span>
