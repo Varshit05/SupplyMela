@@ -51,7 +51,7 @@ const VendorDetails = () => {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      await api.put(`/admin/vendors/${id}/kyc`, { status });
+      await adminApi.put(`/admin/vendors/${id}/kyc`, { status });
       toast.success(`Account has been ${status}`);
       setVendor({ ...vendor, kycStatus: status });
     } catch (err) {
@@ -64,7 +64,7 @@ const VendorDetails = () => {
       // Ensure it's a number and fixed to 1 decimal place
       const formattedScore = parseFloat(Number(newScore).toFixed(1));
 
-      const res = await api.put(`/admin/vendors/${id}/rate`, {
+      const res = await adminApi.put(`/admin/vendors/${id}/rate`, {
         rating: formattedScore
       });
 

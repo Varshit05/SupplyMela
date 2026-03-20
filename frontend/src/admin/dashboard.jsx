@@ -13,7 +13,7 @@ const AdminDashboard = () => {
     const fetchVendors = async () => {
       try {
         // Adding the timestamp ?t=... ensures the browser doesn't use a cached version
-        const res = await api.get(`/vendors?t=${Date.now()}`);
+        const res = await api.get(`admin/vendors?t=${Date.now()}`);
         setVendors(res.data);
       } catch (err) {
         console.error("Failed to fetch vendors", err);
