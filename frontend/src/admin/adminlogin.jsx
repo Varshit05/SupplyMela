@@ -20,11 +20,11 @@ const AdminLogin = () => {
 
     try {
       const res = await api.post("/auth/admin/login", { email, password });
-      login(res.data.token);
+      login(res.data.token, res.data.refreshToken);
       toast.success("Welcome back, Administrator");
       navigate("/admin");
     } catch (err) {
-      toast.error("Invalid administrator credentials");
+      toast.error(err.response?.data?.message || "Invalid administrator credentials");
     } finally {
       setIsSubmitting(false);
     }

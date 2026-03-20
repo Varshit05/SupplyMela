@@ -4,6 +4,7 @@ const AdminAuthContext = createContext();
 
 export const AdminAuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("admin_token"));
+  const [refreshToken, setRefreshToken] = useState(localStorage.getItem("admin_refresh_token"));
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -14,9 +15,7 @@ export const AdminAuthProvider = ({ children }) => {
         setUser(payload);
       } catch (err) {
         console.error("Invalid admin token");
-        localStorage.removeItem("admin_token");
-        setToken(null);
-        setUser(null);
+        logout();
       }
     } else {
       setUser(null);
@@ -24,20 +23,24 @@ export const AdminAuthProvider = ({ children }) => {
     setLoading(false);
   }, [token]);
 
-  const login = (jwt) => {
+  const login = (jwt, refresh) => {
     localStorage.setItem("admin_token", jwt);
+    if (refresh) localStorage.setItem("admin_refresh_token", refresh);
     setToken(jwt);
+    if (refresh) setRefreshToken(refresh);
   };
 
   const logout = () => {
     localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_refresh_token");
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
   };
 
   return (
     <AdminAuthContext.Provider
-      value={{ token, user, loading, login, logout }}
+      value={{ token, refreshToken, user, loading, login, logout }}
     >
       {children}
     </AdminAuthContext.Provider>

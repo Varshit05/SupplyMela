@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import calculateTrustScore from "../utils/trustScore.js";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
-const signToken = (user) =>
+const signAccessToken = (user) =>
   jwt.sign(
     {
       id: user._id,
@@ -12,8 +12,45 @@ const signToken = (user) =>
       isAdmin: user.role === "admin"
     },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "1h" } // Short-lived access token
   );
+
+const signRefreshToken = (user) =>
+  jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+    },
+    process.env.REFRESH_TOKEN_SECRET || "fallback_refresh_secret",
+    { expiresIn: "7d" } // Longer-lived refresh token
+  );
+
+export const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ message: "Refresh token required" });
+
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || "fallback_refresh_secret");
+    
+    // Find user in either model
+    let user = await User.findById(decoded.id);
+    if (!user) {
+        user = await Vendor.findById(decoded.id);
+    }
+    
+    if (!user) return res.status(403).json({ message: "User not found" });
+
+    const newAccessToken = signAccessToken(user);
+
+    res.json({
+      token: newAccessToken,
+      // We can also rotate the refresh token here if desired
+    });
+  } catch (err) {
+    res.status(403).json({ message: "Invalid or expired refresh token" });
+  }
+};
+
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /* ==================  VENDOR AUTH  ================== */
@@ -77,8 +114,10 @@ export const loginVendor = async (req, res) => {
     const match = await bcrypt.compare(password, vendor.password);
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
+    const userObj = { _id: vendor._id, role: "vendor" };
     res.json({
-      token: signToken({_id : vendor._id, role: "vendor"}),
+      token: signAccessToken(userObj),
+      refreshToken: signRefreshToken(userObj),
       role: "vendor",
       vendorId: vendor._id
     });
@@ -125,11 +164,13 @@ export const googleLogin = async (req, res) => {
     }
 
     // 3. Generate the token
-    // IMPORTANT: Make sure signToken is using vendor._id if that's what your context expects
-    const appToken = signToken({ _id: vendor._id, role: "vendor" });
+    const userObj = { _id: vendor._id, role: "vendor" };
+    const appToken = signAccessToken(userObj);
+    const refreshToken = signRefreshToken(userObj);
 
     res.json({
       token: appToken,
+      refreshToken,
       role: "vendor",
       vendorId: vendor._id,
       user: { name: user.name, email: user.email, picture }
@@ -158,7 +199,8 @@ export const adminLogin = async (req, res) => {
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
     res.json({
-      token: signToken(user),
+      token: signAccessToken(user),
+      refreshToken: signRefreshToken(user),
       user: {
         id: user._id,
         name: user.name,

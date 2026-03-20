@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import api from "../api/vendorAxios";
 import { useVendorAuth } from "../context/vendorAuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const Login = () => {
   const [form, setForm] = useState({});
   const { login, token } = useVendorAuth();
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if(window.google){
       window.google.accounts.id.initialize({
@@ -23,21 +26,28 @@ const Login = () => {
   const handleGoogleLogin = async (response) => {
     try {
       const res = await api.post("/auth/google-login", { token: response.credential });
-      login(res.data.token);
+      login(res.data.token, res.data.refreshToken);
+      toast.success("Welcome to SupplyMela");
       navigate("/dashboard");
     } catch (err) {
+      toast.error(err.response?.data?.message || "Google login failed");
       console.error("Google login failed", err);
     }
   };
 
   const submit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const res = await api.post("/auth/login", form);
-      login(res.data.token);
+      login(res.data.token, res.data.refreshToken);
+      toast.success("Login successful");
       navigate("/dashboard");
     } catch (err) {
+      toast.error(err.response?.data?.message || "Invalid email or password");
       console.error("Login failed", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -80,8 +90,12 @@ const Login = () => {
             />
           </div>
 
-          <button className="btn btn-primary w-full py-3 mt-2">
-            Sign In
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="btn btn-primary w-full py-3 mt-2"
+          >
+            {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
         <div className="relative my-6">
